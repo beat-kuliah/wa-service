@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react'
 import Sidebar from '@/components/Sidebar'
 import { whatsappApi, WhatsAppStatus, QRCodeResponse } from '@/lib/api'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { CheckCircle2, XCircle, AlertCircle, RefreshCw, QrCode } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export default function WhatsAppPage() {
   const [status, setStatus] = useState<WhatsAppStatus | null>(null)
@@ -59,122 +64,140 @@ export default function WhatsAppPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
       <div className="flex-1 p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">WhatsApp Connection</h1>
-          <p className="text-gray-600 mt-2">Kelola koneksi WhatsApp</p>
+          <h1 className="text-3xl font-bold">WhatsApp Connection</h1>
+          <p className="text-muted-foreground mt-2">Kelola koneksi WhatsApp</p>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading status...</p>
-            </div>
-          </div>
+          <Card>
+            <CardContent className="p-12">
+              <div className="flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-4 text-muted-foreground">Loading status...</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ) : status ? (
           <div className="space-y-6">
             {/* Status Card */}
-            <div className={`bg-white rounded-lg shadow-md p-6 border-l-4 ${
-              status.connected ? 'border-green-500' : 'border-red-500'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    {status.connected ? '✅ Connected' : '❌ Disconnected'}
-                  </h2>
-                  <p className="text-gray-600">
-                    <span className="font-medium">State:</span> {status.state}
-                  </p>
-                  {status.hasQR && (
-                    <p className="text-yellow-600 mt-2">
-                      ⚠️ QR Code available - Please scan to connect
-                    </p>
-                  )}
+            <Card className={cn(
+              "border-l-4",
+              status.connected ? "border-primary" : "border-destructive"
+            )}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      {status.connected ? (
+                        <CheckCircle2 className="w-6 h-6 text-primary" />
+                      ) : (
+                        <XCircle className="w-6 h-6 text-destructive" />
+                      )}
+                      <h2 className="text-2xl font-bold">
+                        {status.connected ? 'Connected' : 'Disconnected'}
+                      </h2>
+                      <Badge variant={status.connected ? "default" : "destructive"}>
+                        {status.state}
+                      </Badge>
+                    </div>
+                    {status.hasQR && (
+                      <div className="flex items-center gap-2 text-yellow-600">
+                        <AlertCircle className="w-4 h-4" />
+                        <p className="text-sm">QR Code available - Please scan to connect</p>
+                      </div>
+                    )}
+                  </div>
+                  <Button onClick={handleReconnect}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Reconnect
+                  </Button>
                 </div>
-                <button
-                  onClick={handleReconnect}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Reconnect
-                </button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* QR Code */}
             {status.hasQR && (
-              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">QR Code</h3>
-                {qrLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                      <p className="mt-4 text-gray-600">Loading QR code...</p>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <QrCode className="w-5 h-5" />
+                    QR Code
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {qrLoading ? (
+                    <div className="flex items-center justify-center h-64">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                        <p className="mt-4 text-muted-foreground">Loading QR code...</p>
+                      </div>
                     </div>
-                  </div>
-                ) : qrCode ? (
-                  <div className="flex flex-col items-center">
-                    <img
-                      src={qrCode}
-                      alt="QR Code"
-                      className="border-4 border-gray-200 rounded-lg mb-4"
-                    />
-                    <p className="text-gray-600 text-sm">
-                      Scan QR code ini dengan WhatsApp mobile app untuk menghubungkan
-                    </p>
-                    <button
-                      onClick={loadQRCode}
-                      className="mt-4 text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      Refresh QR Code
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <button
-                      onClick={loadQRCode}
-                      className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-                    >
-                      Load QR Code
-                    </button>
-                  </div>
-                )}
-              </div>
+                  ) : qrCode ? (
+                    <div className="flex flex-col items-center space-y-4">
+                      <img
+                        src={qrCode}
+                        alt="QR Code"
+                        className="border-2 border-border rounded-lg p-2 bg-white"
+                      />
+                      <p className="text-sm text-muted-foreground text-center max-w-md">
+                        Scan QR code ini dengan WhatsApp mobile app untuk menghubungkan
+                      </p>
+                      <Button variant="outline" onClick={loadQRCode}>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Refresh QR Code
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Button onClick={loadQRCode}>
+                        <QrCode className="w-4 h-4 mr-2" />
+                        Load QR Code
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
             {/* Connection Info */}
-            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Connection Information</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Connection Status:</span>
-                  <span className={`font-semibold ${
-                    status.connected ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {status.connected ? 'Connected' : 'Disconnected'}
-                  </span>
+            <Card>
+              <CardHeader>
+                <CardTitle>Connection Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Connection Status:</span>
+                    <Badge variant={status.connected ? "default" : "destructive"}>
+                      {status.connected ? 'Connected' : 'Disconnected'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">State:</span>
+                    <span className="font-semibold">{status.state}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">QR Code Available:</span>
+                    <Badge variant={status.hasQR ? "secondary" : "outline"}>
+                      {status.hasQR ? 'Yes' : 'No'}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">State:</span>
-                  <span className="font-semibold text-gray-900">{status.state}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">QR Code Available:</span>
-                  <span className={`font-semibold ${
-                    status.hasQR ? 'text-yellow-600' : 'text-gray-600'
-                  }`}>
-                    {status.hasQR ? 'Yes' : 'No'}
-                  </span>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         ) : (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">Failed to load WhatsApp status</p>
-          </div>
+          <Card className="border-destructive">
+            <CardContent className="p-6">
+              <p className="text-destructive">Failed to load WhatsApp status</p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

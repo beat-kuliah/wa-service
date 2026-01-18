@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Message {
+  id          String    @id @default(uuid())
+  userId      String
+  phoneNumber String
+  message     String    @db.Text
+  templateId  String?
+  status      MessageStatus @default(PENDING)
+  sentAt      DateTime?
+  errorMessage String?  @db.Text
+  retryCount  Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  template    Template? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  logs        MessageLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+model MessageLog {
+  id          String    @id @default(uuid())
+  messageId   String
+  status      MessageStatus
+  errorMessage String?  @db.Text
+  retryCount  Int?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+
+  message     Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([createdAt])
+  @@map("message_logs")
+}
+
+model Template {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  content     String    @db.Text
+  variables   Json      // Array of strings
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  messages    Message[]
+  triggers    Trigger[]
+
+  @@map("templates")
+}
+
+model Trigger {
+  id          String    @id @default(uuid())
+  name        String
+  eventType   String    // TRANSACTION_CREATED, TRANSACTION_UPDATED, etc.
+  conditions  Json      // TriggerCondition object
+  templateId  String
+  enabled     Boolean   @default(true)
+  schedule    String?   // Cron expression or schedule
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  template    Template  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([eventType])
+  @@index([enabled])
+  @@map("triggers")
+}
+
+model Chat {
+  id          String    @id @default(uuid())
+  phoneNumber String
+  name        String?
+  message     String    @db.Text
+  isRead      Boolean   @default(false)
+  isTriggered Boolean   @default(false)
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([phoneNumber])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("chats")
+}
+
+model ApiToken {
+  id          String    @id @default(uuid())
+  name        String
+  token       String    @unique
+  userId      String?
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([token])
+  @@index([userId])
+  @@index([isActive])
+  @@map("api_tokens")
+}
+
+model Admin {
+  id          String    @id @default(uuid())
+  username    String    @unique
+  password    String
+  email       String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([username])
+  @@map("admins")
+}
+
+enum MessageStatus {
+  PENDING
+  QUEUED
+  SENT
+  FAILED
+}
+
