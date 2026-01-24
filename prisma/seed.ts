@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma/client.js'
+import { PrismaClient } from '../generated/prisma/client'
 import * as bcrypt from 'bcrypt'
 import { config } from 'dotenv'
 import { resolve } from 'path'
@@ -70,4 +70,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect()
+    await pool.end()
   })

@@ -23,15 +23,50 @@ export default function LoginPage() {
     setError('')
 
     try {
+      console.log('🔐 Attempting login...', { username })
+      console.log('🌐 API URL:', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api')
+      
       const response = await authApi.login(username, password)
+      console.log('✅ Login response:', response)
+      
       if (response.success && response.data?.token) {
         localStorage.setItem('admin_token', response.data.token)
+        console.log('✅ Token saved, redirecting...')
         router.push('/')
       } else {
-        setError(response.message || 'Login failed')
+        const errorMsg = response.message || 'Login failed'
+        console.error('❌ Login failed:', errorMsg)
+        setError(errorMsg)
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.')
+      console.error('❌ Login error:', err)
+      console.error('❌ Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        config: {
+          url: err.config?.url,
+          method: err.config?.method,
+          baseURL: err.config?.baseURL,
+        }
+      })
+      
+      let errorMessage = 'Login failed. Please check your credentials.'
+      
+      if (err.code === 'ECONNREFUSED' || err.message?.includes('Network Error')) {
+        errorMessage = 'Cannot connect to server. Please check if the backend API is running.'
+      } else if (err.response?.status === 404) {
+        errorMessage = 'Login endpoint not found. Please check API configuration.'
+      } else if (err.response?.status === 500) {
+        errorMessage = 'Server error. Please try again later.'
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -60,9 +95,9 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
+            <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
-              <span className="text-sm">{error}</span>
+              <span className="text-sm font-medium">{error}</span>
             </div>
           )}
 

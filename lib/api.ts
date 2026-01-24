@@ -2,6 +2,14 @@ import axios from 'axios'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
 
+// Log API configuration on client side
+if (typeof window !== 'undefined') {
+  console.log('🔧 API Configuration:', {
+    baseURL: API_BASE_URL,
+    hasApiKey: !!process.env.NEXT_PUBLIC_API_KEY,
+  })
+}
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -124,8 +132,25 @@ export interface Admin {
 // Auth API
 export const authApi = {
   login: async (username: string, password: string) => {
-    const response = await api.post('/admin/login', { username, password })
-    return response.data
+    console.log('📤 Sending login request to:', `${API_BASE_URL}/admin/login`)
+    try {
+      const response = await api.post('/admin/login', { username, password })
+      console.log('📥 Login response received:', {
+        status: response.status,
+        data: response.data
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ Login API error:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL
+      })
+      throw error
+    }
   },
 }
 
