@@ -157,8 +157,35 @@ export const authApi = {
 // Dashboard API
 export const dashboardApi = {
   getStats: async (): Promise<DashboardStats> => {
-    const response = await api.get('/admin/dashboard')
-    return response.data.data
+    try {
+      console.log('📊 Fetching dashboard stats from:', `${API_BASE_URL}/admin/dashboard`)
+      const response = await api.get('/admin/dashboard')
+      console.log('📥 Dashboard response:', {
+        status: response.status,
+        data: response.data
+      })
+      
+      // Handle different response formats
+      if (response.data.data) {
+        return response.data.data
+      } else if (response.data) {
+        // If data is directly in response.data
+        return response.data
+      } else {
+        throw new Error('Invalid response format from dashboard API')
+      }
+    } catch (error: any) {
+      console.error('❌ Dashboard API error:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        headers: error.config?.headers
+      })
+      throw error
+    }
   },
 }
 

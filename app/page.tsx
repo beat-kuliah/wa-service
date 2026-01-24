@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadStats()
@@ -21,10 +22,60 @@ export default function Dashboard() {
 
   const loadStats = async () => {
     try {
+      setError(null)
+      
+      // Check if user is authenticated
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('admin_token')
+        if (!token) {
+          setError('Not authenticated. Please login first.')
+          setLoading(false)
+          // Redirect to login after a short delay
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 2000)
+          return
+        }
+      }
+      
       const data = await dashboardApi.getStats()
       setStats(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading stats:', error)
+      
+      // Extract error message
+      let errorMessage = 'Failed to load dashboard data'
+      if (error?.response) {
+        // Server responded with error
+        const status = error.response.status
+        const data = error.response.data
+        
+        if (status === 401) {
+          errorMessage = 'Unauthorized: Please login again'
+          // Clear token and redirect
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('admin_token')
+            setTimeout(() => {
+              window.location.href = '/login'
+            }, 2000)
+          }
+        } else if (status === 404) {
+          errorMessage = 'Dashboard endpoint not found. Check if backend API is running and endpoint exists.'
+        } else if (status === 500) {
+          errorMessage = `Server error: ${data?.message || 'Backend API encountered an error'}`
+        } else {
+          errorMessage = `Error ${status}: ${data?.message || data?.error || 'Unknown error'}`
+        }
+      } else if (error?.request) {
+        // Request made but no response
+        errorMessage = 'Cannot connect to backend API. Check if API is running and NEXT_PUBLIC_API_URL is correct.'
+      } else {
+        // Error setting up request
+        errorMessage = error?.message || 'Failed to load dashboard data'
+      }
+      
+      setError(errorMessage)
+      setStats(null)
     } finally {
       setLoading(false)
     }
@@ -53,7 +104,30 @@ export default function Dashboard() {
         <div className="flex-1 p-8">
           <Card className="border-destructive">
             <CardContent className="p-6">
-              <p className="text-destructive">Failed to load dashboard data</p>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-destructive mb-2">Failed to load dashboard data</h3>
+                  <p className="text-muted-foreground">{error || 'Unknown error occurred'}</p>
+                </div>
+                <div className="pt-4 border-t">
+                  <p className="text-sm font-medium mb-2">Troubleshooting:</p>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>Check if backend API is running</li>
+                    <li>Verify NEXT_PUBLIC_API_URL in .env.local</li>
+                    <li>Check browser console for detailed error logs</li>
+                    <li>Ensure you are logged in (check localStorage for admin_token)</li>
+                    <li>Verify backend endpoint GET /api/admin/dashboard exists</li>
+                  </ul>
+                </div>
+                <div className="pt-4">
+                  <button
+                    onClick={loadStats}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
