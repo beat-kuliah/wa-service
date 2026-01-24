@@ -13,6 +13,8 @@ const nextConfig = {
       'qrcode',
       '@hapi/boom',
     ],
+    // Enable instrumentation hook for server startup initialization
+    instrumentationHook: true,
   },
   webpack: (config, { isServer }) => {
     // Mark these packages as externals to prevent bundling

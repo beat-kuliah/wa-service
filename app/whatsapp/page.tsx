@@ -54,8 +54,34 @@ export default function WhatsAppPage() {
     // Only call once on mount - check ref to prevent multiple calls
     if (!hasLoadedRef.current && !isLoadingRef.current) {
       loadStatus()
+      
+      // IMPORTANT: Also refresh after a short delay to catch connection state
+      // This is especially important right after server startup when WhatsApp might have just connected
+      // The initial loadStatus() might happen before state is fully synced
+      setTimeout(() => {
+        if (!isLoadingRef.current) {
+          console.log('🔄 Refreshing status after initial load to catch connection state...')
+          loadStatus(true).catch(console.error)
+        }
+      }, 1500) // Refresh after 1.5 seconds
     }
-    // Removed auto-refresh interval - user will manually refresh
+    
+    // Auto-refresh status every 3 seconds to catch connection state changes
+    // This ensures that if WhatsApp connects after page load, state will update
+    const statusInterval = setInterval(() => {
+      // Only refresh if not currently loading and not showing refreshing state
+      if (!isLoadingRef.current && !refreshing) {
+        loadStatus(true).catch(console.error)
+      }
+    }, 3000) // Refresh every 3 seconds
+    
+    // Cleanup on unmount
+    return () => {
+      // Reset refs on unmount to allow fresh load on remount
+      isLoadingRef.current = false
+      isQrLoadingRef.current = false
+      clearInterval(statusInterval)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -67,34 +93,83 @@ export default function WhatsAppPage() {
     }
     
     isQrLoadingRef.current = true
+    
     try {
       setQrLoading(true)
       setError(null)
+      
+      // Refresh status first to get latest state
+      await loadStatus(true)
+      
+      // Don't load QR if already connected
+      if (status?.connected) {
+        setError('WhatsApp sudah terhubung. QR code tidak diperlukan.')
+        setQrLoading(false)
+        isQrLoadingRef.current = false
+        return
+      }
+      
+      console.log('🔄 Requesting QR code...')
       const data = await whatsappApi.getQR()
-      console.log('📥 QR Code response:', { 
-        hasQrCode: !!data.qrCode, 
-        qrCodeLength: data.qrCode?.length,
-        qrCodeStart: data.qrCode?.substring(0, 50),
-        expiresIn: data.expiresIn
+      
+      console.log('📥 QR Code response received:', { 
+        hasQrCode: !!data?.qrCode, 
+        qrCodeLength: data?.qrCode?.length,
+        expiresIn: data?.expiresIn
       })
+      
+      if (!data) {
+        throw new Error('No data received from server')
+      }
       
       if (data.qrCode) {
         // Validate QR code format (should be data URL)
         if (data.qrCode.startsWith('data:image/')) {
           setQrCode(data.qrCode)
           console.log('✅ QR Code set successfully')
+          // Refresh status to ensure UI is up-to-date (but don't wait, do it in background)
+          loadStatus(true).catch(console.error)
         } else {
           console.error('❌ Invalid QR code format:', data.qrCode.substring(0, 100))
-          setError('Invalid QR code format received')
+          setError('Format QR code tidak valid. Silakan coba lagi.')
           setQrCode(null)
         }
       } else {
         console.warn('⚠️ No QR code in response')
-        setError('QR code not available')
+        setError('QR code tidak tersedia. Pastikan WhatsApp belum terhubung.')
+        // Refresh status to check if connected now
+        await loadStatus(true)
       }
     } catch (error: any) {
-      console.error('Error loading QR code:', error)
-      setError(error?.response?.data?.message || error?.message || 'Failed to load QR code')
+      console.error('❌ Error loading QR code:', error)
+      
+      // Extract error message
+      let errorMessage = 'Gagal memuat QR code'
+      
+      if (error?.response?.data) {
+        // API error response
+        errorMessage = error.response.data.message || error.response.data.error || errorMessage
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      // Show user-friendly message for specific errors
+      if (errorMessage.includes('already connected') || errorMessage.includes('No QR code needed')) {
+        setError('WhatsApp sudah terhubung. QR code tidak diperlukan.')
+        // Refresh status to update UI
+        await loadStatus(true)
+      } else if (errorMessage.includes('timeout')) {
+        setError('Timeout saat memuat QR code. Silakan coba lagi.')
+        await loadStatus(true)
+      } else if (errorMessage.includes('not ready') || errorMessage.includes('Failed to initialize')) {
+        setError('WhatsApp client belum siap. Silakan tunggu sebentar dan coba lagi.')
+        await loadStatus(true)
+      } else {
+        setError(errorMessage)
+        // Refresh status to get latest state
+        await loadStatus(true)
+      }
+      
       setQrCode(null)
     } finally {
       setQrLoading(false)
@@ -224,24 +299,37 @@ export default function WhatsAppPage() {
                     <p className="text-sm text-muted-foreground text-center max-w-md">
                       Scan QR code ini dengan WhatsApp mobile app untuk menghubungkan
                     </p>
-                    <Button variant="outline" onClick={loadQRCode} disabled={qrLoading}>
+                    <Button variant="outline" onClick={loadQRCode} disabled={qrLoading || status?.connected}>
                       <RefreshCw className="w-4 h-4 mr-2" />
                       Refresh QR Code
                     </Button>
                   </div>
                 ) : (
                   <div className="text-center py-8 space-y-4">
-                    {!status.hasQR && (
-                      <p className="text-sm text-muted-foreground mb-4">
-                        QR code tidak tersedia saat ini. Klik tombol di bawah untuk mencoba memuat QR code.
-                      </p>
-                    )}
-                    <Button onClick={loadQRCode} disabled={qrLoading}>
-                      <QrCode className="w-4 h-4 mr-2" />
-                      {qrLoading ? 'Loading...' : 'Load QR Code'}
-                    </Button>
-                    {error && (
-                      <p className="text-sm text-destructive mt-2">{error}</p>
+                    {status.connected ? (
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          WhatsApp sudah terhubung. QR code tidak diperlukan.
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Jika ingin menghubungkan ulang, gunakan tombol "Reconnect" di atas.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {!status.hasQR && (
+                          <p className="text-sm text-muted-foreground mb-4">
+                            QR code tidak tersedia saat ini. Klik tombol di bawah untuk mencoba memuat QR code.
+                          </p>
+                        )}
+                        <Button onClick={loadQRCode} disabled={qrLoading || status.connected}>
+                          <QrCode className="w-4 h-4 mr-2" />
+                          {qrLoading ? 'Loading...' : 'Load QR Code'}
+                        </Button>
+                        {error && (
+                          <p className="text-sm text-destructive mt-2">{error}</p>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

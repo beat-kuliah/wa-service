@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 import { reconnectWhatsApp } from '@/lib/whatsapp'
-// Initialize WhatsApp when this route is accessed
-import '@/lib/whatsapp-init'
+// Note: WhatsApp initialization is handled by instrumentation.ts on server startup
+// reconnectWhatsApp will handle reinitialization as needed
 
 // POST /api/whatsapp/reconnect - Reconnect WhatsApp
 export async function POST(request: NextRequest) {
