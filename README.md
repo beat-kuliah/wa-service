@@ -130,9 +130,12 @@ Dashboard terhubung ke WA Service API melalui:
 - `POST /admin/api-tokens` - Create API token
 - `POST /admin/api-tokens/:id/revoke` - Revoke token
 - `DELETE /admin/api-tokens/:id` - Delete token
-- `GET /whatsapp/status` - Get WhatsApp status
-- `GET /whatsapp/qr` - Get QR code
-- `POST /whatsapp/reconnect` - Reconnect WhatsApp
+- `GET /api/whatsapp/status` - Get WhatsApp status (direct implementation)
+- `GET /api/whatsapp/qr` - Get QR code (direct implementation)
+- `POST /api/whatsapp/reconnect` - Reconnect WhatsApp (direct implementation)
+
+**Note**: Endpoint WhatsApp sekarang diimplementasikan langsung di service ini (bukan proxy). 
+Lihat `WHATSAPP_INTEGRATION.md` untuk panduan integrasi dengan library WhatsApp yang sebenarnya.
 
 ## 🎨 Styling
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Sidebar from '@/components/Sidebar'
 import StatsCard from '@/components/StatsCard'
 import { dashboardApi, DashboardStats } from '@/lib/api'
@@ -13,33 +13,42 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    loadStats()
-    const interval = setInterval(loadStats, 30000) // Refresh every 30 seconds
-    return () => clearInterval(interval)
-  }, [])
+  const isLoadingRef = useRef(false)
+  const hasLoadedRef = useRef(false)
 
   const loadStats = async () => {
+    // Prevent multiple simultaneous calls using ref
+    if (isLoadingRef.current) {
+      console.log('⏸️ Load stats already in progress, skipping...')
+      return
+    }
+    
+    // Prevent multiple calls if already loaded successfully
+    if (hasLoadedRef.current && stats) {
+      console.log('⏸️ Already loaded successfully, skipping...')
+      return
+    }
+    
+    isLoadingRef.current = true
+    
     try {
       setError(null)
       
-      // Check if user is authenticated
+      // Check if user is authenticated - but don't redirect here, let axios interceptor handle it
       if (typeof window !== 'undefined') {
         const token = localStorage.getItem('admin_token')
         if (!token) {
           setError('Not authenticated. Please login first.')
           setLoading(false)
-          // Redirect to login after a short delay
-          setTimeout(() => {
-            window.location.href = '/login'
-          }, 2000)
+          isLoadingRef.current = false
+          // Don't redirect here - let axios interceptor handle it to prevent loop
           return
         }
       }
       
       const data = await dashboardApi.getStats()
       setStats(data)
+      hasLoadedRef.current = true
     } catch (error: any) {
       console.error('Error loading stats:', error)
       
@@ -52,13 +61,8 @@ export default function Dashboard() {
         
         if (status === 401) {
           errorMessage = 'Unauthorized: Please login again'
-          // Clear token and redirect
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('admin_token')
-            setTimeout(() => {
-              window.location.href = '/login'
-            }, 2000)
-          }
+          // Don't redirect here - axios interceptor will handle it to prevent loop
+          // Just clear local state
         } else if (status === 404) {
           errorMessage = 'Dashboard endpoint not found. Check if backend API is running and endpoint exists.'
         } else if (status === 500) {
@@ -78,8 +82,18 @@ export default function Dashboard() {
       setStats(null)
     } finally {
       setLoading(false)
+      isLoadingRef.current = false
     }
   }
+
+  useEffect(() => {
+    // Only call once on mount - check both refs to prevent multiple calls
+    if (!hasLoadedRef.current && !isLoadingRef.current) {
+      loadStats()
+    }
+    // Removed auto-refresh interval - user will manually refresh if needed
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (loading) {
     return (

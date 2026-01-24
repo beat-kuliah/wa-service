@@ -30,13 +30,36 @@ api.interceptors.request.use((config) => {
 })
 
 // Handle 401 errors (unauthorized)
+let isRedirecting = false
+let redirectTimeout: NodeJS.Timeout | null = null
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && !isRedirecting) {
+        // Don't redirect if already on login page
+        if (window.location.pathname === '/login') {
+          return Promise.reject(error)
+        }
+        
+        // Prevent multiple redirects
+        isRedirecting = true
+        
+        // Clear any pending redirect timeout
+        if (redirectTimeout) {
+          clearTimeout(redirectTimeout)
+        }
+        
         localStorage.removeItem('admin_token')
-        window.location.href = '/login'
+        
+        // Use replace instead of href to prevent back button issues
+        // Add small delay to prevent rapid redirects
+        redirectTimeout = setTimeout(() => {
+          if (window.location.pathname !== '/login' && !isRedirecting) {
+            window.location.replace('/login')
+          }
+        }, 100)
       }
     }
     return Promise.reject(error)
