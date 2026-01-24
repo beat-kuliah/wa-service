@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, MessagesSquare, FileText, Key, Smartphone, LogOut } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, MessagesSquare, FileText, Key, Smartphone, LogOut, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -13,6 +13,7 @@ const menuItems = [
   { href: '/chats', label: 'Chats', icon: MessagesSquare },
   { href: '/templates', label: 'Templates', icon: FileText },
   { href: '/api-tokens', label: 'API Tokens', icon: Key },
+  { href: '/users', label: 'Users', icon: Users },
   { href: '/whatsapp', label: 'WhatsApp', icon: Smartphone },
 ]
 

@@ -9,11 +9,19 @@
    ```
 
 2. **Setup Environment Variables**
-   Buat file `.env.local` di root folder:
+   Buat file `.env.local` di root folder (copy dari `.env.local.example`):
    ```env
    NEXT_PUBLIC_API_URL=http://localhost:3000/api
    NEXT_PUBLIC_API_KEY=your-api-key-here
+   
+   # Optional: Database URL (hanya jika ingin menggunakan Prisma untuk development/testing)
+   # DATABASE_URL="postgresql://user:password@localhost:5432/wa_service?schema=public"
    ```
+   
+   **Note:** 
+   - `DATABASE_URL` hanya diperlukan jika Anda ingin menjalankan Prisma migrations/push di dashboard ini
+   - Jika database ada di backend wa-service, Anda tidak perlu set `DATABASE_URL` di dashboard
+   - Untuk generate Prisma client saja, `DATABASE_URL` tidak diperlukan
 
 3. **Start Development Server**
    ```bash
@@ -28,6 +36,36 @@
 
 - WA Service API harus sudah running di `http://localhost:3000` (atau sesuaikan dengan `NEXT_PUBLIC_API_URL`)
 - Admin user sudah dibuat di wa-service (gunakan script `create-admin.ts`)
+
+## Database Setup (Optional)
+
+Jika Anda ingin menggunakan Prisma untuk development/testing di dashboard ini:
+
+1. **Setup Database URL** di `.env.local`:
+   ```env
+   DATABASE_URL="postgresql://user:password@localhost:5432/wa_service?schema=public"
+   ```
+
+2. **Generate Prisma Client** (tidak perlu DATABASE_URL):
+   ```bash
+   npm run prisma:generate
+   ```
+
+3. **Run Migration** (perlu DATABASE_URL):
+   ```bash
+   npm run prisma:migrate
+   # atau untuk development langsung push
+   npm run prisma:push
+   ```
+
+4. **Create Super Admin** (setelah migration):
+   ```bash
+   npm run prisma:seed
+   ```
+   
+   Lihat `SETUP_ADMIN.md` untuk detail lengkap tentang setup admin pertama.
+
+**Note:** Jika database hanya ada di backend wa-service, Anda tidak perlu setup `DATABASE_URL` di dashboard. Prisma schema di dashboard hanya untuk reference/type checking.
 
 ## Optional: Create Admin Messages Endpoint
 

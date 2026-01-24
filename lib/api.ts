@@ -111,6 +111,16 @@ export interface QRCodeResponse {
   expiresIn: number
 }
 
+export interface Admin {
+  id: string
+  username: string
+  email?: string
+  role: 'SUPER_ADMIN' | 'ADMIN'
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 // Auth API
 export const authApi = {
   login: async (username: string, password: string) => {
@@ -235,6 +245,34 @@ export const whatsappApi = {
         'X-API-Key': process.env.NEXT_PUBLIC_API_KEY || '',
       },
     })
+    return response.data
+  },
+}
+
+// Admins API
+export const adminsApi = {
+  getAll: async (): Promise<Admin[]> => {
+    const response = await api.get('/admin/admins')
+    return response.data.data || []
+  },
+  getById: async (id: string): Promise<Admin> => {
+    const response = await api.get(`/admin/admins/${id}`)
+    return response.data.data
+  },
+  create: async (data: { username: string; password: string; email?: string; role?: 'SUPER_ADMIN' | 'ADMIN' }) => {
+    const response = await api.post('/admin/admins', data)
+    return response.data
+  },
+  update: async (id: string, data: { username?: string; email?: string; role?: 'SUPER_ADMIN' | 'ADMIN'; isActive?: boolean }) => {
+    const response = await api.put(`/admin/admins/${id}`, data)
+    return response.data
+  },
+  updatePassword: async (id: string, password: string) => {
+    const response = await api.put(`/admin/admins/${id}/password`, { password })
+    return response.data
+  },
+  delete: async (id: string) => {
+    const response = await api.delete(`/admin/admins/${id}`)
     return response.data
   },
 }

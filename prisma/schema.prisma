@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -119,11 +120,13 @@ model Admin {
   username    String    @unique
   password    String
   email       String?
+  role        AdminRole @default(ADMIN)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([username])
+  @@index([role])
   @@map("admins")
 }
 
@@ -132,5 +135,10 @@ enum MessageStatus {
   QUEUED
   SENT
   FAILED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
 }
 
